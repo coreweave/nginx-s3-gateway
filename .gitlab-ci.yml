@@ -19,7 +19,7 @@ build:image:
   variables:
     REF_IMAGE: $CI_REGISTRY_IMAGE/$DOCKER_IMG:$CI_COMMIT_REF_SLUG
     FIXED_IMAGE: $CI_REGISTRY_IMAGE/$DOCKER_IMG:$CI_COMMIT_SHORT_SHA
-    DOCKERFILE: ${CI_PROJECT_DIR}/Dockerfile-coreweave
+    DOCKERFILE: ${CI_PROJECT_DIR}/Dockerfile.coreweave
   before_script:
     - export HTTP_PROXY=${CACHE_PROXY}
     - export NO_PROXY=${CACHE_REGISTRY_HOST}
