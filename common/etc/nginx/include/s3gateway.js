@@ -13,7 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+/*
+    Modifications to this file have been made by CoreWeave in an effort to support a full fledged Proxy.
+    All requests method have been added to the proxy pass through functions.
+*/
 _require_env_var('S3_BUCKET_NAME');
 _require_env_var('S3_SERVER');
 _require_env_var('S3_SERVER_PROTO');
