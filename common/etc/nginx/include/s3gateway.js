@@ -13,7 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+/*
+    Modifications to this file have been made by CoreWeave in an effort to support a full fledged Proxy.
+    All requests method have been added to the proxy pass through functions.
+*/
 _require_env_var('S3_BUCKET_NAME');
 _require_env_var('S3_SERVER');
 _require_env_var('S3_SERVER_PROTO');
@@ -24,7 +27,6 @@ _require_env_var('S3_STYLE');
 
 const mod_hmac = require('crypto');
 const fs = require('fs');
-
 /**
  * Flag indicating debug mode operation. If true, additional information
  * about signature generation will be logged.
@@ -99,6 +101,9 @@ function editHeaders(r) {
      * requesters to the gateway will not know you are proxying S3. */
     if ('headersOut' in r) {
         for (const key in r.headersOut) {
+            if (key === 'x-amz-content-sha256' && r.method === 'PUT') {
+                continue;
+            }
             /* We delete all headers when it is a directory head request because
              * none of the information is relevant for passing on via a gateway. */
             if (isDirectoryHeadRequest) {
@@ -391,9 +396,12 @@ function s3uri(r) {
         }
         path = _escapeURIPath(basePath + uriPath);
     }
-
-    _debug_log(r, 'S3 Request URI: ' + r.method + ' ' + path);
-    return path;
+    //used to remove duplicate bucket names from the path when using a custom backend like R2.
+    let uniqueList=path.split('/').filter(function(item,i,allItems){
+        return i==allItems.indexOf(item);
+    }).join('/');
+    _debug_log(r, 'S3 Request URI: ' + r.method + ' ' + uniqueList);
+    return uniqueList;
 }
 
 /**
@@ -437,7 +445,7 @@ function _s3DirQueryParams(uriPath, method) {
  */
 function redirectToS3(r) {
     // This is a read-only S3 gateway, so we do not support any other methods
-    if (!(r.method === 'GET' || r.method === 'HEAD')) {
+    if (!(r.method === 'GET' || r.method === 'HEAD' || r.method === 'PUT' || r.method === 'DELETE')) {
         _debug_log(r, 'Invalid method requested: ' + r.method);
         r.internalRedirect("@error405");
         return;
@@ -452,6 +460,9 @@ function redirectToS3(r) {
         r.internalRedirect("@s3");
     } else if ( !ALLOW_LISTING && !PROVIDE_INDEX_PAGE && uriPath == "/" ) {
        r.internalRedirect("@error404");
+    } else if (r.method === 'PUT' || r.method === 'DELETE') {
+        _debug_log(r, 'Redirecting to s3catchall pathing');
+        r.internalRedirect("@s3catchall");
     } else {
         r.internalRedirect("@s3");
     }
@@ -594,6 +605,22 @@ function _buildSignatureV4(r, amzDatetime, eightDigitDate, creds, bucket, region
         host = bucket + '.' + host;
     }
     const method = r.method;
+    let sha256 = '';
+    if ('headersIn' in r){
+        for (const key in r.headersIn) {
+            _debug_log(r, 'HEADER: [' + key + ']=' + r.headersIn[key]);
+            if (key.toLowerCase() === 'x-amz-content-sha256') {
+                sha256 = r.headersIn[key];
+                r.headersOut[key] = sha256;
+            }
+            if (key.toLowerCase() === 'x-amz-date') {
+                r.headersOut[key] = r.headersIn[key];
+                amzDatetime = r.headersIn[key];
+            }
+        }
+
+    }
+
     const baseUri = s3BaseUri(r);
     const queryParams = _s3DirQueryParams(r.variables.uri_path, method);
     let uri;
@@ -607,7 +634,7 @@ function _buildSignatureV4(r, amzDatetime, eightDigitDate, creds, bucket, region
         uri = s3uri(r);
     }
 
-    const canonicalRequest = _buildCanonicalRequest(method, uri, queryParams, host, amzDatetime, creds.sessionToken);
+    const canonicalRequest = _buildCanonicalRequest(method, uri, queryParams, host, amzDatetime, creds.sessionToken, sha256);
 
     _debug_log(r, 'AWS v4 Auth Canonical Request: [' + canonicalRequest + ']');
 
@@ -721,9 +748,13 @@ function _buildStringToSign(amzDatetime, eightDigitDate, region, canonicalReques
  * @returns {string} string with concatenated request parameters
  * @private
  */
-function _buildCanonicalRequest(method, uri, queryParams, host, amzDatetime, sessionToken) {
+function _buildCanonicalRequest(method, uri, queryParams, host, amzDatetime, sessionToken, sha256) {
+    let PAYLOAD_HASH=EMPTY_PAYLOAD_HASH;
+    if ((method === 'PUT' || method === 'DELETE') && sha256 !== ''){
+        PAYLOAD_HASH = sha256;
+    }
     let canonicalHeaders = 'host:' + host + '\n' +
-        'x-amz-content-sha256:' + EMPTY_PAYLOAD_HASH + '\n' +
+        'x-amz-content-sha256:' + PAYLOAD_HASH + '\n' +
         'x-amz-date:' + amzDatetime + '\n';
 
     if (sessionToken) {
@@ -735,7 +766,7 @@ function _buildCanonicalRequest(method, uri, queryParams, host, amzDatetime, ses
     canonicalRequest += queryParams + '\n';
     canonicalRequest += canonicalHeaders + '\n';
     canonicalRequest += signedHeaders(sessionToken) + '\n';
-    canonicalRequest += EMPTY_PAYLOAD_HASH;
+    canonicalRequest += PAYLOAD_HASH;
 
     return canonicalRequest;
 }
