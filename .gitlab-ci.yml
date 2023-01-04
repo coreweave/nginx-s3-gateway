@@ -38,7 +38,7 @@ tag:release:
   image: node:lts-alpine3.15
   only:
     refs:
-      - main
+      - coreweave
   artifacts:
     paths:
       - artifacts.env
@@ -53,7 +53,7 @@ publish:release:
   stage: release
   only:
     refs:
-      - main
+      - coreweave
   dependencies:
     - tag:release
   variables:
