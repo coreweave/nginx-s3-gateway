@@ -11,14 +11,13 @@ stages:
   - release
 
 variables:
-  DOCKER_IMG: nginx-s3-gateway
+  DOCKER_IMG: gateway
   FIXED_IMAGE_TAG: ${CI_COMMIT_SHORT_SHA}
 
 build:image:
   stage: build
   variables:
-    REGISTRY: registry.gitlab.com/coreweave/utility-images
-    REF_IMAGE: $REGISTRY/$DOCKER_IMG:$CI_COMMIT_REF_SLUG
+    REF_IMAGE: $CI_REGISTRY_IMAGE/$DOCKER_IMG:$CI_COMMIT_REF_SLUG
     FIXED_IMAGE: $REGISTRY/$DOCKER_IMG:$CI_COMMIT_SHORT_SHA
     DOCKERFILE: ${CI_PROJECT_DIR}/Dockerfile.coreweave
   before_script:
@@ -58,10 +57,9 @@ publish:release:
   dependencies:
     - tag:release
   variables:
-    REGISTRY: registry.gitlab.com/coreweave/utility-images
     IMAGE_NAME: ${DOCKER_IMG}
-    REF_IMAGE: $REGISTRY/$IMAGE_NAME:$CI_COMMIT_REF_SLUG
-    FIXED_IMAGE: $REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    REF_IMAGE: $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_SLUG
+    FIXED_IMAGE: $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
     DOCKERFILE: ${CI_PROJECT_DIR}/Dockerfile
   image:
     name: registry.gitlab.com/coreweave/utility-images/crane/debug:temp
@@ -70,4 +68,4 @@ publish:release:
     - export $(cat artifacts.env | xargs)
   script:
     - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - crane tag "$REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"  "$BUILD_VERSION"
+    - crane tag "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"  "$BUILD_VERSION"
