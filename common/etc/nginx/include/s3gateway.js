@@ -458,8 +458,8 @@ function redirectToS3(r) {
     } else if ( !ALLOW_LISTING && !PROVIDE_INDEX_PAGE && uriPath == "/" ) {
        r.internalRedirect("@error404");
     } else if (r.method === 'PUT' || r.method === 'DELETE') {
-        _debug_log(r, 'Redirecting to puts3 pathing');
-        r.internalRedirect("@puts3");
+        _debug_log(r, 'Redirecting to s3catchall pathing');
+        r.internalRedirect("@s3catchall");
     } else {
         r.internalRedirect("@s3");
     }
