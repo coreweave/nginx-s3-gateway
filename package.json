@@ -1,3 +1,19 @@
 {
-  "name": "nginx-s3-gateway"
+  "name": "nginx-s3-gateway",
+  "dependencies": {
+    "@semantic-release/exec": "^5.0.0",
+    "@semantic-release/github": "^7.2.0",
+    "semantic-release": "17.4.7",
+    "semantic-release-monorepo": "^7.0.5"
+  },
+  "private": true,
+  "devDependencies": {
+    "@commitlint/cli": "^13.1.0",
+    "@commitlint/config-conventional": "^13.1.0",
+    "husky": "^7.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "format": "npx prettier --write ."
+  }
 }
