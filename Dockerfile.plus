@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:11.6-slim
 
 ENV NGINX_PLUS_VERSION   28-1
 ENV NGINX_VERSION        1.23.2
